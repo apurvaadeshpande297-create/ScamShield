@@ -1,0 +1,186 @@
+# 🛡️ ScamShield
+
+**A scam and fraud triage assistant for everyday people in India, in English and Hindi/Hinglish.**
+
+Paste a suspicious SMS, WhatsApp message, or email, or describe a call you received. ScamShield tells you whether it's likely a scam, what type it is, how confident it is, and exactly what to do next.
+
+> 🚧 **Status:** work in progress. The architecture and dataset pipeline are in place; model training, evaluation, and deployment are underway. Metrics below are marked `TBD` until measured. No numbers are claimed before they are validated.
+
+---
+
+## The problem
+
+Digital fraud (UPI payment scams, fake KYC and bank-block messages, fake job offers, loan-app scams, lottery scams) affects millions of people in India. Most people have no fast, trustworthy way to ask "is this real?" before it's too late.
+
+Existing tools tend to be:
+- **English-only**, while real scam messages are often Hinglish (Hindi written in Roman script)
+- **Built for technical users**
+- **Flat yes/no answers** with no explanation and no guidance on what to do next
+
+## What ScamShield does
+
+1. **You paste** a suspicious message (or describe a call or offer).
+2. **A fast classifier** triages it into a scam category or "legitimate".
+3. **If the case is ambiguous or high-stakes**, an LLM asks 1-3 short clarifying questions (e.g. *"Did they ask for your OTP?"*, *"Have you already sent money?"*).
+4. **A verification layer** checks external evidence the text alone can't show (suspicious links, known scam reports).
+5. **You get** the category, a confidence level, a plain-language explanation, and concrete next steps, including where to report.
+
+### Scam categories
+
+| Category | Examples |
+|---|---|
+| `phishing` | Fake "account blocked / update KYC" links |
+| `upi_fraud` | "Sent money by mistake, please refund", fake payment screenshots, QR scams |
+| `fake_job` | Work-from-home offers with a "registration fee" |
+| `loan_app_scam` | Instant loans, no documents, upfront processing fees |
+| `lottery_scam` | KBC and prize-winning messages |
+| `investment_scam` | Guaranteed or doubled returns, crypto and stock tips |
+| `fake_customer_care` | Fake helpline numbers found via search |
+| `legitimate` | Real bank, delivery, and utility messages |
+
+## Architecture
+
+```
+User message (EN / HI / Hinglish)
+            │
+            ▼
+   Language detection
+            │
+            ▼
+┌──────────────────────────────┐
+│ Tier 1: Fine-tuned           │
+│ multilingual classifier      │──── high confidence, no red flags ───► Result
+└──────────────────────────────┘
+            │
+   low confidence, OR classifier disagrees with
+   rule-based red flags, OR message contains a
+   link / phone number / payment request
+            ▼
+┌──────────────────────────────┐
+│ Tier 2: LLM diagnostic Q&A   │
+│ (asks clarifying questions)  │
+└──────────────────────────────┘
+            │
+            ▼
+┌──────────────────────────────┐
+│ Tier 3: Deep verification    │
+│ URL reputation checks,       │
+│ scam-report lookups,         │
+│ rule-based red flags         │
+└──────────────────────────────┘
+            │
+            ▼
+Final category + confidence + explanation + next steps (in the user's language)
+```
+
+### Why this design
+
+- **Cascade, not "send everything to a big LLM".** A cheap classifier handles obvious cases instantly. Expensive steps run only when needed, keeping latency and cost low.
+- **Escalation covers confident mistakes, not just uncertainty.** Fine-tuned models are often overconfident, so a message that contains a link, phone number, or payment request is verified regardless of the classifier's confidence, and disagreement between the model and rule-based red flags triggers escalation.
+- **Multilingual by design.** Training data and evaluation include Hinglish and Hindi, not English with translation bolted on.
+- **Evidence over verdicts.** The verification layer reports findings ("link flagged by N sources") rather than overriding the user with an unexplained decision.
+
+## Dataset
+
+| Source | Description | Labeling |
+|---|---|---|
+| Hand-written seed examples | India-specific scam and legitimate messages | Manual |
+| [UCI SMS Spam Collection](https://archive.ics.uci.edu/dataset/228/sms+spam+collection) | Real English SMS, spam/ham | `ham → legitimate` (reliable); scam *category* assigned by **keyword heuristics** (weak labels, spot-checked manually) |
+| Hinglish / India-specific examples | Collected from volunteers, public scam-warning posts, and clearly flagged synthetic examples | Manual |
+
+**Transparency note:** the UCI data is UK-context English. It provides volume and "legitimate" examples, but the India-specific and Hinglish coverage comes from the manually collected portion. Every row records its `source` and a `confidence_note`, and heuristic-labeled rows are flagged for review. See [`data/labeled/DATASET_STATUS.md`](data/labeled/DATASET_STATUS.md) and [`docs/labeling_guide.md`](docs/labeling_guide.md).
+
+All personal information (phone numbers, names, account and order numbers) is redacted from collected messages before they are added.
+
+## Evaluation
+
+The classifier is evaluated on a held-out test set that is never used for training or tuning, with results reported **per category and per language** so weaknesses stay visible.
+
+| Metric | English | Hinglish / Hindi |
+|---|---|---|
+| Accuracy | `TBD` | `TBD` |
+| Macro F1 | `TBD` | `TBD` |
+
+Planned analyses:
+- Per-category precision and recall, plus a confusion matrix
+- Confidence calibration (reliability curve; temperature scaling)
+- How many of the classifier's *confident errors* the verification tier catches, and how many correct answers it wrongly flips
+- Usability testing with real non-technical users
+
+## Tech stack
+
+- **ML:** Python, Hugging Face `transformers` and `datasets`, `scikit-learn`; base model `distilbert-base-multilingual-cased` (benchmarking `ai4bharat/indic-bert` as an alternative)
+- **LLM layer:** an LLM API (e.g. OpenRouter or Groq) for diagnostic Q&A
+- **App:** Gradio
+- **Deployment:** Hugging Face Spaces; dataset and model published on the Hugging Face Hub
+
+## Repository structure
+
+```
+scamshield/
+├── data/
+│   ├── raw/          # unprocessed source material
+│   ├── labeled/      # labeled dataset + status notes
+│   └── splits/       # train/val/test (generated)
+├── models/
+│   └── train_classifier.py   # fine-tuning + per-category/per-language evaluation
+├── app/
+│   └── app.py                # Gradio interface and cascade logic
+├── docs/
+│   └── labeling_guide.md     # labeling schema and consistency rules
+└── README.md
+```
+
+## Getting started
+
+```bash
+git clone https://github.com/apurvaadeshpande297-create/scamshield.git
+cd scamshield
+pip install transformers datasets scikit-learn pandas torch gradio
+
+# Train the classifier
+cd models
+python train_classifier.py --data ../data/labeled/scam_dataset.csv
+
+# Run the app
+cd ../app
+python app.py
+```
+
+## Roadmap
+
+- [x] Project scaffold, labeling schema, and training pipeline
+- [x] Bootstrap dataset (seed examples + relabeled UCI SMS data)
+- [ ] Collect and label Hinglish and India-specific examples (target: 300-400)
+- [ ] Manually review a sample of heuristic-labeled rows
+- [ ] Train and evaluate the classifier (per-category, per-language)
+- [ ] Calibrate confidence scores
+- [ ] LLM diagnostic Q&A layer
+- [ ] Verification layer (URL reputation, rule-based red flags)
+- [ ] Deploy to Hugging Face Spaces
+- [ ] User testing with non-technical users
+- [ ] Publish dataset and model on the Hugging Face Hub
+- [ ] Write up methodology and findings
+
+## Limitations
+
+- **Not a guarantee.** ScamShield is a decision aid and can be wrong. When in doubt, contact your bank or the helpline directly.
+- **Dataset coverage.** Scam tactics evolve quickly, and a static dataset will lag behind new patterns.
+- **Heuristic labels.** Part of the training data uses weak labels, which can introduce category noise.
+- **Language coverage.** Performance on Hinglish and Hindi depends on how much real data was collected; per-language results are reported separately for this reason.
+- **Privacy.** Do not paste sensitive details (passwords, OTPs, full card numbers) into any tool, including this one. Messages are redacted before any external lookup.
+
+## Reporting a scam (India)
+
+- 📞 **National Cyber Crime Helpline:** `1930`
+- 🌐 **Online complaint:** [cybercrime.gov.in](https://cybercrime.gov.in)
+- 🏦 If money or an OTP was shared, **contact your bank immediately**.
+
+## License
+
+`TBD`. Choose a license before publishing (e.g. MIT for code, CC BY 4.0 for the dataset), and check the license terms of any source datasets you redistribute.
+
+## Acknowledgements
+
+- [UCI SMS Spam Collection](https://archive.ics.uci.edu/dataset/228/sms+spam+collection) (Almeida & Hidalgo)
+- Hugging Face `transformers` and `datasets`

@@ -1,0 +1,22 @@
+Testing Next.js frontend...
+[FAIL] Next.js request failed: <urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>
+Testing FastAPI backend api...
+[OK] Backend response received:
+{
+  "category": "phishing",
+  "badge": "\u26a0\ufe0f PHISHING ATTEMPT",
+  "confidence": 0.9833385224376705,
+  "language": "hi_roman",
+  "advice": "Yeh message aapki bank details churaane ke liye fake link h. Link pe click na karein.",
+  "red_flags": [
+    "Threat of account/electricity block within hours",
+    "Suspicious link (bit.ly, .info, .site)",
+    "Asking for OTP"
+  ],
+  "helpline": "\ud83d\udea8 Cyber Helpline **1930** par call karein | Online complaint: **cybercrime.gov.in**",
+  "route": "fast_path",
+  "follow_up_questions": []
+}
+[OK] All response fields validated successfully!
+
+*** VERIFICATION FAILED. CHECK LOGS ABOVE. ***

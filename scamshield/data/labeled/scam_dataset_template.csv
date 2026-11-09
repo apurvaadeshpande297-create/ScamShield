@@ -1,0 +1,9 @@
+id,text,language,is_scam,category,confidence_note,source
+1,"Congratulations! You have won Rs 25,00,000 in KBC lottery. Send your bank details to claim.",en,1,lottery_scam,obvious_keywords,manual_example
+2,"Aapka SBI account block ho gaya hai. Turant is link pe click karke KYC update karein: http://bit.ly/sbi-kyc",hi_roman,1,phishing,urgency_plus_link,manual_example
+3,"Hi, we reviewed your resume and would like to offer you a work-from-home job. Registration fee Rs 500 required.",en,1,fake_job,upfront_fee_red_flag,manual_example
+4,"Your Amazon order #4471 has been shipped and will arrive tomorrow.",en,0,legitimate,none,manual_example
+5,"Bhai maine tumhe UPI se paisa bhej diya hai lekin galti se tumhare number pe chala gaya, refund kar do please",hi_roman,1,upi_fraud,fake_refund_request,manual_example
+6,"Reminder: Your electricity bill of Rs 1240 is due on 15th. Pay via official app only.",en,0,legitimate,none,manual_example
+7,"RBI ne aapka loan approve kar diya hai bina kisi document ke. Processing fee Rs 999 pay karein abhi.",hi_roman,1,loan_app_scam,no_docs_red_flag,manual_example
+8,"This is to inform you that your investment of Rs 10000 will double in 7 days. Limited slots available.",en,1,investment_scam,unrealistic_returns,manual_example
